@@ -1,0 +1,170 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: gateway
+  cloud:
+    gateway:
+      # ---------------------------------------------------------------------
+      # Rutas: el frontend solo conoce el Gateway (:8080).
+      # Los destinos se resuelven por nombre de contenedor dentro de la red
+      # interna; en Render se sobrescriben con las variables *_URL.
+      # ---------------------------------------------------------------------------
+      routes:
+        - id: iam-service
+          uri: ${IAM_URL:http://iam-service:8081}
+          predicates:
+            - Path=/api/v1/auth/**,/api/v1/users/**,/api/v1/identity/**,/api/v1/verifications/**,/api/v1/security/**,/api/v1/terms/**,/api/v1/admin/**
+
+        - id: social-service
+          uri: ${SOCIAL_URL:http://social-service:8082}
+          predicates:
+            - Path=/api/v1/communities/**,/api/v1/posts/**,/api/v1/comments/**,/api/v1/testimonials/**,/api/v1/saved/**,/api/v1/promotions/**
+
+        - id: content-service
+          uri: ${CONTENT_URL:http://content-service:8083}
+          predicates:
+            - Path=/api/v1/articles/**,/api/v1/resources/**
+
+        - id: service-service
+          uri: ${SERVICE_URL:http://service-service:8084}
+          predicates:
+            - Path=/api/v1/psychologists/**,/api/v1/volunteering/**,/api/v1/applications/**
+
+        - id: engagement-service
+          uri: ${ENGAGEMENT_URL:http://engagement-service:8085}
+          predicates:
+            - Path=/api/v1/streaks/**,/api/v1/notifications/**,/api/v1/metrics/**,/api/v1/activity/**
+
+        # -------------------------------------------------------------------
+        # Swagger/OpenAPI de cada microservicio, expuesto SOLO a través del
+        # Gateway. El frontend y el navegador nunca ven los puertos internos:
+        #   /openapi/iam  ->  iam-service:8081/v3/api-docs
+        #   /openapi/...  ->  cada servicio interno
+        # -------------------------------------------------------------------
+        - id: iam-docs
+          uri: ${IAM_URL:http://iam-service:8081}
+          predicates:
+            - Path=/openapi/iam
+          filters:
+            - SetPath=/v3/api-docs
+            - PreserveHostHeader
+
+        - id: social-docs
+          uri: ${SOCIAL_URL:http://social-service:8082}
+          predicates:
+            - Path=/openapi/social
+          filters:
+            - SetPath=/v3/api-docs
+            - PreserveHostHeader
+
+        - id: content-docs
+          uri: ${CONTENT_URL:http://content-service:8083}
+          predicates:
+            - Path=/openapi/content
+          filters:
+            - SetPath=/v3/api-docs
+            - PreserveHostHeader
+
+        - id: service-docs
+          uri: ${SERVICE_URL:http://service-service:8084}
+          predicates:
+            - Path=/openapi/service
+          filters:
+            - SetPath=/v3/api-docs
+            - PreserveHostHeader
+
+        - id: engagement-docs
+          uri: ${ENGAGEMENT_URL:http://engagement-service:8085}
+          predicates:
+            - Path=/openapi/engagement
+          filters:
+            - SetPath=/v3/api-docs
+            - PreserveHostHeader
+
+      httpclient:
+        connect-timeout: 5000
+        response-timeout: 15s
+
+  cloud.gateway.globalcors:
+    add-to-simple-url-handler-mapping: true
+
+server.error.include-message: always
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,gateway
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: T'inkisqa API Gateway
+    description: Punto de entrada único para el frontend
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    disable-swagger-default-url: true
+    # Abre Swagger UI directamente en el IAM (el único servicio con endpoints reales hoy).
+    urls-primary-name: IAM Service (auth, usuarios, identidad)
+    urls:
+      - name: IAM Service (auth, usuarios, identidad)
+        url: /openapi/iam
+      - name: Social Service (comunidades, posts, promociones)
+        url: /openapi/social
+      - name: Content Service (articulos, recursos)
+        url: /openapi/content
+      - name: Service Service (psicologas, voluntariado)
+        url: /openapi/service
+      - name: Engagement Service (rachas, notificaciones, metricas)
+        url: /openapi/engagement
+
+  # El Gateway no tiene controladores propios: personalizamos su portada
+  openapi:
+    info:
+      title: T'inkisqa API Gateway
+      description: >
+        Punto de entrada único del backend T'inkisqa. Todos los clientes
+        (app móvil Expo) hablan solo con este Gateway (:8080); los microservicios
+        son internos a la red Docker. Usa el selector "Select a definition"
+        para ver el contrato OpenAPI de cada servicio.
+      version: 0.1.0
+
+tinkisqa:
+  security:
+    jwt:
+      secret: ${JWT_SECRET:change_me_dev_secret_with_at_least_32_chars}
+      issuer: ${JWT_ISSUER:tinkisqa-iam}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:*}
+  gateway:
+    # Rutas que NO requieren JWT
+    public-paths:
+      - /actuator/**
+      - /v3/api-docs/**
+      - /swagger-ui/**
+      - /swagger-ui.html
+      - /webjars/**
+      - /favicon.ico
+      - /openapi/**
+      - /api/v1/auth/**
+      - /api/v1/terms/**
+      - /api/v1/communities/ping
+      - /api/v1/articles/ping
+      - /api/v1/psychologists/ping
+      - /api/v1/streaks/ping
+
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    com.tinkisqa.gateway: INFO

@@ -1,0 +1,24 @@
+package com.tinkisqa.iam.domain.model;
+
+/** Tipos de evento de seguridad registrados por el servicio. */
+public enum SecurityEventType {
+    REGISTRO,
+    LOGIN_EXITOSO,
+    LOGIN_FALLIDO,
+    CUENTA_BLOQUEADA,
+    SESION_EXPIRADA,
+    CORREO_VERIFICADO,
+    TELEFONO_VERIFICADO,
+    OTP_REENVIADO,
+    VERIFICACION_ENVIADA,
+    VERIFICACION_RESUELTA,
+    DOCUMENTO_DUPLICADO,
+    MFA_ACTUALIZADO,
+    REPORTE_ENVIADO,
+    REPORTE_RESUELTO,
+    USUARIO_BLOQUEADO,
+    CUENTA_SUSPENDIDA,
+    CUENTA_REACTIVADA,
+    ROL_ACTUALIZADO,
+    LOGOUT
+}
